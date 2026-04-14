@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-carbon-900 text-white font-sans antialiased;
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { @apply bg-carbon-800; }
+  ::-webkit-scrollbar-thumb { @apply bg-carbon-600 rounded-full; }
+}
+
+@layer components {
+  .card {
+    @apply bg-carbon-800 border border-carbon-700 rounded-card p-4;
+  }
+  .btn-primary {
+    @apply bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-carbon-900 font-semibold
+           px-5 py-3 rounded-xl transition-all min-h-touch flex items-center justify-center
+           disabled:opacity-50 disabled:cursor-not-allowed w-full text-base;
+  }
+  .btn-ghost {
+    @apply bg-carbon-700 hover:bg-carbon-600 active:bg-carbon-800 text-white px-4 py-3
+           rounded-xl transition-all min-h-touch flex items-center justify-center w-full;
+  }
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-500 active:bg-red-700 text-white px-5 py-3 rounded-xl
+           transition-all min-h-touch flex items-center justify-center w-full;
+  }
+  .btn-warning {
+    @apply bg-orange-500/20 hover:bg-orange-500/40 text-orange-300 border border-orange-500/30
+           px-5 py-3 rounded-xl transition-all min-h-touch flex items-center justify-center w-full;
+  }
+  .input {
+    @apply bg-carbon-700 border border-carbon-600 text-white rounded-xl px-4 py-3
+           focus:outline-none focus:border-amber-500 placeholder-carbon-400
+           transition-colors w-full text-base min-h-touch;
+  }
+  .label {
+    @apply text-sm text-carbon-300 font-medium mb-1.5 block;
+  }
+  .check-item {
+    @apply flex items-center gap-3 p-3.5 rounded-xl cursor-pointer transition-all
+           border select-none;
+  }
+  .check-item-active {
+    @apply bg-green-500/10 border-green-500/40 text-green-300;
+  }
+  .check-item-inactive {
+    @apply bg-carbon-700/50 border-carbon-700 text-carbon-300 hover:bg-carbon-700;
+  }
+}
+
+/* Bottom nav safe area */
+.bottom-nav {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+/* Pulse animation for active delivery */
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
+  70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(245,158,11,0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+}
+.pulse-amber { animation: pulse-ring 2s infinite; }

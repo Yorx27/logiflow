@@ -1,0 +1,295 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id          String     @id @default(uuid())
+  nombre      String
+  email       String     @unique
+  password    String
+  rol         Rol        @default(OPERADOR)
+  activo      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  conductorId String?    @unique
+  conductor   Conductor? @relation(fields: [conductorId], references: [id])
+}
+
+enum Rol {
+  ADMIN
+  OPERADOR
+  CONDUCTOR
+}
+
+model Conductor {
+  id            String        @id @default(uuid())
+  nombre        String
+  telefono      String?
+  licencia      String        @unique
+  estado        EstadoCond    @default(DISPONIBLE)
+  fechaRegistro DateTime      @default(now())
+  usuario       Usuario?
+  entregas      Entrega[]
+}
+
+enum EstadoCond {
+  DISPONIBLE
+  EN_RUTA
+  INACTIVO
+}
+
+model Vehiculo {
+  id        String     @id @default(uuid())
+  placa     String     @unique
+  modelo    String
+  tipo      TipoVeh
+  capacidad String
+  costoKm   Float
+  estado    EstadoVeh  @default(DISPONIBLE)
+  entregas  Entrega[]
+}
+
+enum TipoVeh {
+  TORTON
+  RABON
+  VAN
+  PICKUP
+  PLATAFORMA
+}
+
+enum EstadoVeh {
+  DISPONIBLE
+  EN_RUTA
+  MANTENIMIENTO
+}
+
+model Solicitud {
+  id                 String     @id @default(uuid())
+  ot                 String     @unique
+  cliente            String
+  rfcCliente         String?
+  ordenCompra        String?
+  tipo               TipoSol
+  estado             EstadoSol  @default(PENDIENTE)
+  fechaSolicitud     DateTime
+  fechaRecoleccion   DateTime?
+  fechaEntrega       DateTime?
+  horaEntrega        String?
+  descripcionCarga   String?
+  cantidad           Int        @default(0)
+  tarimas            Int        @default(0)
+  etiquetasPieza     Int        @default(0)
+  etiquetasColectivo Int        @default(0)
+  papeletas          Int        @default(0)
+  cajaColectiva      Boolean    @default(false)
+  playo              Boolean    @default(false)
+  poliBurbuja        Boolean    @default(false)
+  requiereAcond      Boolean    @default(false)
+  gestionTarimas     Boolean    @default(false)
+  lineaTransporte    String?
+  tipoTransporte     String?
+  requiereManiobra   Boolean    @default(false)
+  variosDestinos     Boolean    @default(false)
+  observaciones      String?
+  costo              Float      @default(0)
+  direccionEntrega   String?
+  latDestino         Float?
+  lngDestino         Float?
+  distanciaKm        Float?
+  tiempoRuta         String?
+  itemsRemision      Json?
+  deletedAt          DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  entrega            Entrega?
+  facturas           Factura[]
+}
+
+enum TipoSol {
+  DISTRIBUCION
+  RECOLECCION
+  TRANSFERENCIA
+  ULTIMA_MILLA
+}
+
+enum EstadoSol {
+  PENDIENTE
+  ASIGNADA
+  EN_RUTA
+  COMPLETADA
+  RECHAZADA
+  INCIDENCIA
+}
+
+enum SubEstadoConductor {
+  EN_RUTA
+  EN_ESPERA
+  DESCARGA
+  ENTREGA_DOCUMENTOS
+  COMPLETADO
+}
+
+model Entrega {
+  id                  String               @id @default(uuid())
+  solicitudId         String               @unique
+  solicitud           Solicitud            @relation(fields: [solicitudId], references: [id])
+  conductorId         String?
+  conductor           Conductor?           @relation(fields: [conductorId], references: [id])
+  vehiculoId          String?
+  vehiculo            Vehiculo?            @relation(fields: [vehiculoId], references: [id])
+  estado              EstadoSol            @default(PENDIENTE)
+  subEstado           SubEstadoConductor?
+  motivo              String?
+  remisionUrl         String?
+  evidencia           Evidencia?
+  documentos          DocumentoEntrega[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model DocumentoEntrega {
+  id          String   @id @default(uuid())
+  entregaId   String
+  entrega     Entrega  @relation(fields: [entregaId], references: [id])
+  nombre      String
+  url         String
+  tipo        String
+  subidoPor   String
+  createdAt   DateTime @default(now())
+
+  @@index([entregaId])
+}
+
+model Evidencia {
+  id               String          @id @default(uuid())
+  entregaId        String          @unique
+  entrega          Entrega         @relation(fields: [entregaId], references: [id])
+  checkLlegada     DateTime?
+  checkContacto    DateTime?
+  checkDescarga    DateTime?
+  checkConteo      DateTime?
+  checkCondicion   DateTime?
+  checkRemision    DateTime?
+  checkAcuse       DateTime?
+  tieneFirma       Boolean         @default(false)
+  firmaUrl         String?
+  observaciones    String?
+  horaFinalizacion DateTime?
+  fotos            FotoEvidencia[]
+  createdAt        DateTime        @default(now())
+}
+
+model FotoEvidencia {
+  id          String    @id @default(uuid())
+  evidenciaId String
+  evidencia   Evidencia @relation(fields: [evidenciaId], references: [id])
+  categoria   CatFoto
+  url         String
+  nombre      String
+  createdAt   DateTime  @default(now())
+}
+
+enum CatFoto {
+  DESCARGA
+  DOCUMENTOS
+}
+
+model Factura {
+  id          String     @id @default(uuid())
+  numero      String     @unique
+  cliente     String
+  solicitudId String?
+  solicitud   Solicitud? @relation(fields: [solicitudId], references: [id])
+  subtotal    Float
+  gastosAdic  Float      @default(0)
+  estado      EstadoFact @default(BORRADOR)
+  fecha       DateTime   @default(now())
+  createdAt   DateTime   @default(now())
+}
+
+enum EstadoFact {
+  BORRADOR
+  EMITIDA
+  PAGADA
+  CANCELADA
+}
+
+model Configuracion {
+  id                 String   @id @default("singleton")
+  costoEtiqueta      Float    @default(5)
+  costoTarima        Float    @default(50)
+  costoPapeleta      Float    @default(2)
+  costoCajaColectiva Float    @default(25)
+  costoPlayo         Float    @default(15)
+  costoPoliBurbuja   Float    @default(10)
+  empresa            String   @default("LogiFlow S.A.")
+  email              String   @default("admin@logiflow.com")
+  telefono           String   @default("+52 55 1234-5678")
+  direccion          String   @default("Av. Reforma 123, CDMX")
+  latOrigen          Float?
+  lngOrigen          Float?
+  updatedAt          DateTime @updatedAt
+}
+
+model Notificacion {
+  id          String    @id @default(uuid())
+  mensaje     String
+  tipo        TipoNotif
+  conductorId String?
+  leida       Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
+
+enum TipoNotif {
+  SUCCESS
+  ERROR
+  WARNING
+  INFO
+}
+
+// ─── INVENTARIO ─────────────────────────────────────────────────────────────
+
+model Producto {
+  id          String                 @id @default(uuid())
+  sku         String                 @unique
+  nombre      String
+  descripcion String?
+  unidad      String                 @default("pza")
+  categoria   String?
+  stockActual Int                    @default(0)
+  stockMinimo Int                    @default(0)
+  precio      Float?
+  activo      Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  movimientos MovimientoInventario[]
+}
+
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+  AJUSTE
+}
+
+model MovimientoInventario {
+  id           String         @id @default(uuid())
+  productoId   String
+  producto     Producto       @relation(fields: [productoId], references: [id])
+  tipo         TipoMovimiento
+  cantidad     Int
+  stockAntes   Int
+  stockDespues Int
+  motivo       String?
+  referencia   String?
+  solicitudId  String?
+  entregaId    String?
+  usuarioId    String
+  createdAt    DateTime       @default(now())
+
+  @@index([productoId])
+  @@index([createdAt])
+}

@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-carbon-900 text-white font-sans antialiased;
+    min-height: 100vh;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-carbon-800; }
+  ::-webkit-scrollbar-thumb { @apply bg-carbon-600 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-carbon-500; }
+}
+
+@layer components {
+  .card {
+    @apply bg-carbon-800 border border-carbon-700 rounded-card p-5;
+  }
+  .btn-primary {
+    @apply bg-amber-500 hover:bg-amber-400 text-carbon-900 font-semibold px-4 py-2 rounded-lg
+           transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply bg-carbon-700 hover:bg-carbon-600 text-white px-4 py-2 rounded-lg transition-all duration-150;
+  }
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg transition-all duration-150;
+  }
+  .input {
+    @apply bg-carbon-700 border border-carbon-600 text-white rounded-lg px-3 py-2
+           focus:outline-none focus:border-amber-500 placeholder-carbon-400
+           transition-colors w-full;
+  }
+  .label {
+    @apply text-sm text-carbon-300 font-medium mb-1 block;
+  }
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+  .table-row-hover {
+    @apply hover:bg-carbon-700/50 transition-colors;
+  }
+}
+
+/* Leaflet dark override */
+.leaflet-container {
+  background: #1e1e28 !important;
+  border-radius: 8px;
+}
+.leaflet-tile-pane { filter: brightness(0.85) saturate(0.9); }
