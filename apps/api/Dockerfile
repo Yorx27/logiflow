@@ -4,11 +4,12 @@ RUN apk add --no-cache openssl
 RUN npm install -g pnpm@10
 WORKDIR /app
 
-# Copy workspace manifests only (cache-friendly)
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY apps/api/package.json ./apps/api/
+# schema.prisma must exist BEFORE pnpm install so Prisma reads binaryTargets
+COPY apps/api/prisma/schema.prisma ./apps/api/prisma/schema.prisma
 
 RUN pnpm install --frozen-lockfile
 
@@ -16,7 +17,6 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS builder
 WORKDIR /app
 
-# Copy source
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 
@@ -26,11 +26,18 @@ RUN pnpm run build
 # ── Stage 3: runner ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 RUN apk add --no-cache openssl
+RUN npm install -g pnpm@10
 WORKDIR /app
 
-# Copy everything from builder — avoids binary re-download issues
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY packages/types/package.json ./packages/types/
+COPY packages/utils/package.json ./packages/utils/
+COPY apps/api/package.json ./apps/api/
+# schema.prisma before install so Prisma downloads the correct linux-musl binary
+COPY apps/api/prisma/schema.prisma ./apps/api/prisma/schema.prisma
+
+RUN pnpm install --prod --frozen-lockfile
+
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/apps/api/src/assets ./apps/api/src/assets
