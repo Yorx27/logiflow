@@ -8,8 +8,6 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY apps/api/package.json ./apps/api/
-# schema.prisma must exist BEFORE pnpm install so Prisma reads binaryTargets
-COPY apps/api/prisma/schema.prisma ./apps/api/prisma/schema.prisma
 
 RUN pnpm install --frozen-lockfile
 
@@ -23,9 +21,9 @@ COPY apps/api/ ./apps/api/
 WORKDIR /app/apps/api
 RUN pnpm run build
 
-# ── Stage 3: runner ──────────────────────────────────────────────────────────
-FROM node:20-alpine AS runner
-RUN apk add --no-cache openssl
+# ── Stage 3: runner (Debian 11 = libssl1.1 natively, Prisma default target) ──
+FROM node:20-bullseye-slim AS runner
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@10
 WORKDIR /app
 
@@ -33,11 +31,7 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY apps/api/package.json ./apps/api/
-# schema.prisma before install so Prisma downloads the correct linux-musl binary
-COPY apps/api/prisma/schema.prisma ./apps/api/prisma/schema.prisma
 
-# Force Prisma to download the linux-musl-openssl-3.0.x binary (Alpine has OpenSSL 3)
-ENV PRISMA_CLI_BINARY_TARGETS=linux-musl-openssl-3.0.x
 RUN pnpm install --prod --frozen-lockfile
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
