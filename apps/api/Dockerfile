@@ -36,6 +36,8 @@ COPY apps/api/package.json ./apps/api/
 # schema.prisma before install so Prisma downloads the correct linux-musl binary
 COPY apps/api/prisma/schema.prisma ./apps/api/prisma/schema.prisma
 
+# Force Prisma to download the linux-musl-openssl-3.0.x binary (Alpine has OpenSSL 3)
+ENV PRISMA_CLI_BINARY_TARGETS=linux-musl-openssl-3.0.x
 RUN pnpm install --prod --frozen-lockfile
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
