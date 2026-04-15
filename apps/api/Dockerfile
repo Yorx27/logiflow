@@ -35,12 +35,15 @@ COPY packages/utils/package.json ./packages/utils/
 COPY apps/api/package.json ./apps/api/
 RUN pnpm install --prod --frozen-lockfile
 
-# Copy built output
+# Copy built output and prisma schema
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/apps/api/src/assets ./apps/api/src/assets
 
+# Generate Prisma client with correct binary for this runtime OS (linux-musl)
 WORKDIR /app/apps/api
+RUN node_modules/.bin/prisma generate
+
 ENV NODE_ENV=production
 EXPOSE 3001
 CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/index.js"]
