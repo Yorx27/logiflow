@@ -31,10 +31,11 @@ model Conductor {
   nombre        String
   telefono      String?
   licencia      String        @unique
-  estado        EstadoCond    @default(DISPONIBLE)
-  fechaRegistro DateTime      @default(now())
+  estado        EstadoCond      @default(DISPONIBLE)
+  fechaRegistro DateTime        @default(now())
   usuario       Usuario?
   entregas      Entrega[]
+  gastos        GastoConductor[]
 }
 
 enum EstadoCond {
@@ -103,6 +104,7 @@ model Solicitud {
   distanciaKm        Float?
   tiempoRuta         String?
   itemsRemision      Json?
+  folioCandado       String?
   deletedAt          DateTime?
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
@@ -148,6 +150,7 @@ model Entrega {
   remisionUrl         String?
   evidencia           Evidencia?
   documentos          DocumentoEntrega[]
+  gastos              GastoConductor[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -250,6 +253,77 @@ enum TipoNotif {
   ERROR
   WARNING
   INFO
+}
+
+// ─── GASTOS ─────────────────────────────────────────────────────────────────
+
+enum EstadoGasto {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+enum FrecuenciaGasto {
+  DIARIO
+  SEMANAL
+  MENSUAL
+  ANUAL
+}
+
+model GastoConductor {
+  id              String         @id @default(uuid())
+  conductorId     String
+  conductor       Conductor      @relation(fields: [conductorId], references: [id])
+  entregaId       String?
+  entrega         Entrega?       @relation(fields: [entregaId], references: [id])
+  estacionamiento Float          @default(0)
+  gasolina        Float          @default(0)
+  tag             Float          @default(0)
+  casetas         Float          @default(0)
+  comidas         Float          @default(0)
+  otros           Float          @default(0)
+  otrosDesc       String?
+  estado          EstadoGasto    @default(PENDIENTE)
+  observaciones   String?
+  archivos        GastoArchivo[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([conductorId])
+}
+
+model GastoArchivo {
+  id               String         @id @default(uuid())
+  gastoConductorId String
+  gastoConductor   GastoConductor @relation(fields: [gastoConductorId], references: [id])
+  categoria        String
+  url              String
+  nombre           String
+  createdAt        DateTime       @default(now())
+
+  @@index([gastoConductorId])
+}
+
+model GastoFijo {
+  id          String          @id @default(uuid())
+  nombre      String
+  monto       Float
+  frecuencia  FrecuenciaGasto @default(MENSUAL)
+  categoria   String?
+  activo      Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model GastoVariable {
+  id          String   @id @default(uuid())
+  nombre      String
+  monto       Float
+  fecha       DateTime @default(now())
+  categoria   String?
+  comprobante String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ─── INVENTARIO ─────────────────────────────────────────────────────────────

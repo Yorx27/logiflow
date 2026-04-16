@@ -106,6 +106,7 @@ entregasRouter.put('/:id/asignar', async (req, res, next) => {
         clienteNombre: sol.cliente,
         rfcCliente: sol.rfcCliente || undefined,
         ordenCompra: sol.ordenCompra || undefined,
+        folioCandado: sol.folioCandado || undefined,
         items,
         observaciones: sol.observaciones || undefined,
       }, path.resolve(uploadDir))
@@ -237,8 +238,8 @@ entregasRouter.get('/:id/remision', async (req, res, next) => {
     if (entrega.remisionUrl) {
       const filePath = path.resolve(uploadDir, entrega.remisionUrl.replace('/uploads/', ''))
       if (require('fs').existsSync(filePath)) {
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        res.setHeader('Content-Disposition', `attachment; filename="remision_${entrega.solicitud.ot}.xlsx"`)
+        res.setHeader('Content-Type', 'application/pdf')
+        res.setHeader('Content-Disposition', `attachment; filename="remision_${entrega.solicitud.ot}.pdf"`)
         return res.sendFile(filePath)
       }
     }
@@ -256,12 +257,13 @@ entregasRouter.get('/:id/remision', async (req, res, next) => {
       clienteNombre: sol.cliente,
       rfcCliente: sol.rfcCliente || undefined,
       ordenCompra: sol.ordenCompra || undefined,
+      folioCandado: sol.folioCandado || undefined,
       items,
       observaciones: sol.observaciones || undefined,
     })
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    res.setHeader('Content-Disposition', `attachment; filename="remision_${sol.ot}.xlsx"`)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="remision_${sol.ot}.pdf"`)
     res.send(buf)
   } catch (e) { next(e) }
 })

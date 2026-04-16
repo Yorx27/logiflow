@@ -18,6 +18,7 @@ import { reportesRouter } from './routes/reportes'
 import { configRouter } from './routes/config'
 import { notificacionesRouter } from './routes/notificaciones'
 import { inventarioRouter } from './routes/inventario'
+import { gastosRouter } from './routes/gastos'
 import { errorHandler } from './middleware/errorHandler'
 
 const app = express()
@@ -48,6 +49,7 @@ app.use('/api/reportes', reportesRouter)
 app.use('/api/config', configRouter)
 app.use('/api/notificaciones', notificacionesRouter)
 app.use('/api/inventario', inventarioRouter)
+app.use('/api/gastos', gastosRouter)
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date() }))
 

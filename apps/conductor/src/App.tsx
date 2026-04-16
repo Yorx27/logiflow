@@ -8,6 +8,7 @@ import { ChecklistPage } from './pages/ChecklistPage'
 import { HistorialPage } from './pages/HistorialPage'
 import { NotificacionesPage } from './pages/NotificacionesPage'
 import { PerfilPage } from './pages/PerfilPage'
+import { GastosPage } from './pages/GastosPage'
 import { ToastContainer } from './components/ToastContainer'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="checklist/:entregaId" element={<ChecklistPage />} />
           <Route path="historial" element={<HistorialPage />} />
           <Route path="notificaciones" element={<NotificacionesPage />} />
+          <Route path="gastos" element={<GastosPage />} />
           <Route path="perfil" element={<PerfilPage />} />
         </Route>
       </Routes>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, Controller, useFieldArray } from 'react-hook-form'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
@@ -12,6 +12,76 @@ import type { Solicitud } from '@logiflow/types'
 
 const TIPOS = ['DISTRIBUCION', 'RECOLECCION', 'TRANSFERENCIA', 'ULTIMA_MILLA'] as const
 const TRANSPORTES = ['TORTON', 'RABON', 'VAN', 'PICKUP', 'PLATAFORMA'] as const
+
+// ── Address autocomplete using Nominatim ─────────────────────────────────────
+function AddressAutocomplete({
+  value,
+  onChange,
+  onSelect,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onSelect: (lat: number, lng: number, display: string) => void
+}) {
+  const [suggestions, setSuggestions] = useState<{ display_name: string; lat: string; lon: string }[]>([])
+  const [open, setOpen] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function handleInput(v: string) {
+    onChange(v)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (v.length < 4) { setSuggestions([]); setOpen(false); return }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=mx&q=${encodeURIComponent(v)}`
+        const res = await fetch(url, { headers: { 'Accept-Language': 'es' } })
+        const data = await res.json()
+        setSuggestions(data)
+        setOpen(data.length > 0)
+      } catch { /* ignore */ }
+    }, 450)
+  }
+
+  function pick(s: { display_name: string; lat: string; lon: string }) {
+    onSelect(parseFloat(s.lat), parseFloat(s.lon), s.display_name)
+    setSuggestions([])
+    setOpen(false)
+  }
+
+  return (
+    <div ref={wrapRef} className="relative flex-1">
+      <input
+        value={value}
+        onChange={e => handleInput(e.target.value)}
+        className="input w-full"
+        placeholder="Calle, Colonia, CDMX"
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <ul className="absolute z-50 top-full left-0 right-0 mt-1 bg-carbon-800 border border-carbon-600 rounded-lg shadow-xl max-h-52 overflow-y-auto">
+          {suggestions.map((s, i) => (
+            <li
+              key={i}
+              onMouseDown={() => pick(s)}
+              className="px-3 py-2 text-xs text-carbon-200 hover:bg-carbon-700 cursor-pointer border-b border-carbon-700 last:border-0 leading-snug"
+            >
+              📍 {s.display_name}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 function MapPicker({ value, onChange }: { value: [number, number] | null; onChange: (v: [number, number]) => void }) {
   function Inner() {
@@ -36,6 +106,7 @@ const defaultValues = {
   requiereManiobra: false, variosDestinos: false, observaciones: '',
   costo: 0, direccionEntrega: '', latDestino: null as number | null, lngDestino: null as number | null,
   distanciaKm: null as number | null, tiempoRuta: '',
+  folioCandado: '',
   itemsRemision: [{ partida: 1, descripcion: '', unidad: 'PIEZAS', cantidadSolicitada: 0, cantidadEntregada: 0 }] as {
     partida: number; descripcion: string; unidad: string; cantidadSolicitada: number; cantidadEntregada: number
   }[],
@@ -331,12 +402,28 @@ export function SolicitudesPage() {
           {/* Tab 3: Ruta */}
           {tab === 3 && (
             <div className="space-y-4">
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-end">
                 <div className="flex-1">
                   <label className="label">Dirección de Entrega</label>
-                  <input {...register('direccionEntrega')} className="input" placeholder="Calle, Colonia, CDMX" />
+                  <Controller
+                    control={control}
+                    name="direccionEntrega"
+                    render={({ field }) => (
+                      <AddressAutocomplete
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        onSelect={(lat, lng, display) => {
+                          field.onChange(display)
+                          setMapPos([lat, lng])
+                          setValue('latDestino', lat)
+                          setValue('lngDestino', lng)
+                          toast.success('Dirección seleccionada')
+                        }}
+                      />
+                    )}
+                  />
                 </div>
-                <button type="button" onClick={handleGeocode} className="btn-ghost text-sm self-end">📍 Geocodificar</button>
+                <button type="button" onClick={handleGeocode} className="btn-ghost text-sm self-end whitespace-nowrap">📍 Geocodificar</button>
               </div>
               <div>
                 <label className="label text-xs text-carbon-500">Haz clic en el mapa para seleccionar destino</label>
@@ -393,10 +480,16 @@ export function SolicitudesPage() {
           {/* Tab 5: Remisión */}
           {tab === 5 && (
             <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Folio de Candado</label>
+                  <input {...register('folioCandado')} className="input" placeholder="ej. C-2024-001" />
+                </div>
+              </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-white font-medium text-sm">Ítems de la Remisión</p>
-                  <p className="text-carbon-400 text-xs mt-0.5">Estos datos llenarán el formato Excel automáticamente al asignar la entrega</p>
+                  <p className="text-carbon-400 text-xs mt-0.5">Estos datos llenarán el formato PDF automáticamente al asignar la entrega</p>
                 </div>
                 <button type="button"
                   onClick={() => appendItem({ partida: itemFields.length + 1, descripcion: '', unidad: 'PIEZAS', cantidadSolicitada: 0, cantidadEntregada: 0 })}
@@ -457,7 +550,7 @@ export function SolicitudesPage() {
 
               <div className="bg-carbon-700/40 border border-carbon-600 rounded-lg px-4 py-3 text-xs text-carbon-400">
                 💡 Al asignar conductor y vehículo en el módulo de Entregas, se generará automáticamente el formato de Remisión
-                en Excel pre-llenado con estos datos, disponible para descarga desde la app del conductor.
+                en PDF pre-llenado con estos datos, disponible para descarga desde la app del conductor.
               </div>
             </div>
           )}

@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs'
+import PDFDocument from 'pdfkit'
 import path from 'path'
 import fs from 'fs'
 
@@ -11,262 +11,181 @@ export interface ItemRemision {
 }
 
 export interface RemisionData {
-  remisionNumero: string       // ej: ML-240
+  remisionNumero: string
   fecha: Date
   clienteNombre: string
   rfcCliente?: string
   ordenCompra?: string
+  folioCandado?: string
   items: ItemRemision[]
   observaciones?: string
 }
 
 const LOGO_PATH = path.resolve(__dirname, '../assets/logo_aleska.jpeg')
-const EMPRESA   = 'ALESKA TIER S. DE R.L. DE C.V.'
+const EMPRESA    = 'ALESKA TIER S. DE R.L. DE C.V.'
 const RFC_EMPRESA = 'RFC: CAT150918IZ8'
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ── Draw one copy (ENTREGADO or SOLICITADO) ───────────────────────────────────
 
-function applyMediumBorder(cell: ExcelJS.Cell, sides: ('top'|'bottom'|'left'|'right')[]) {
-  const border: any = { ...cell.border }
-  sides.forEach(s => { border[s] = { style: 'medium' } })
-  cell.border = border
-}
-
-function blackHeader(ws: ExcelJS.Worksheet, row: number, col: number) {
-  const cell = ws.getCell(row, col)
-  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } }
-  cell.font = { name: 'Arial', size: 12, bold: true, italic: true, color: { argb: 'FFFFFFFF' } }
-  cell.alignment = { horizontal: 'center', vertical: 'middle' }
-}
-
-function mergeAndSet(
-  ws: ExcelJS.Worksheet,
-  startRow: number, startCol: number,
-  endRow: number, endCol: number,
-  value: any,
-  opts: Partial<{ font: Partial<ExcelJS.Font>; alignment: Partial<ExcelJS.Alignment>; numFmt: string }>  = {}
-) {
-  ws.mergeCells(startRow, startCol, endRow, endCol)
-  const cell = ws.getCell(startRow, startCol)
-  cell.value = value
-  if (opts.font) cell.font = opts.font as ExcelJS.Font
-  if (opts.alignment) cell.alignment = opts.alignment as ExcelJS.Alignment
-  if (opts.numFmt) cell.numFmt = opts.numFmt
-  return cell
-}
-
-// ── single copy builder ───────────────────────────────────────────────────────
-
-function buildCopy(
-  ws: ExcelJS.Worksheet,
-  base: number,               // row offset (0 for top, 25 for bottom)
+function drawCopy(
+  doc: PDFKit.PDFDocument,
   data: RemisionData,
-  copyType: 'ENTREGADO' | 'SOLICITADO'
-) {
-  const r = (n: number) => base + n   // absolute row
+  copyType: 'ENTREGADO' | 'SOLICITADO',
+  startY: number
+): number {
+  const L  = 40           // left margin
+  const R  = 572          // right margin
+  const W  = R - L        // content width
+  let y    = startY
 
-  // ── Title  (col G–I, rows 1–2) ──────────────────────────────────────────
-  mergeAndSet(ws, r(1), 7, r(2), 9, `REMISION   ${data.remisionNumero}`, {
-    font: { name: 'Calibri', size: 20, bold: true, color: { argb: 'FFFF0000' } },
-    alignment: { horizontal: 'right', vertical: 'bottom' },
-  })
-  ws.getCell(r(2), 7).border = { bottom: { style: 'medium' } }
+  // ── Header ──────────────────────────────────────────────────────────────
+  const headerH = 72
+  doc.rect(L, y, W, headerH).stroke('#000000')
 
-  // ── Company name (row 4, col C–I) ────────────────────────────────────────
-  mergeAndSet(ws, r(4), 3, r(4), 9, `                ${EMPRESA}`, {
-    font: { name: 'Calibri', size: 28, bold: true },
-    alignment: { horizontal: 'center', vertical: 'middle' },
-  })
-  ws.getRow(r(4)).height = 36.75
-  applyMediumBorder(ws.getCell(r(4), 9), ['right'])
-
-  // ── RFC empresa (rows 6–7, cols E–H) ────────────────────────────────────
-  mergeAndSet(ws, r(6), 5, r(7), 8, RFC_EMPRESA, {
-    font: { name: 'Calibri', size: 18, bold: true },
-    alignment: { horizontal: 'center', vertical: 'middle' },
-  })
-
-  // ── Outer border (rows 3–22, cols B & I as left/right rails) ────────────
-  for (let row = r(3); row <= r(22); row++) {
-    applyMediumBorder(ws.getCell(row, 2), ['left'])
-    applyMediumBorder(ws.getCell(row, 9), ['right'])
-  }
-  // top & bottom rail
-  for (let col = 2; col <= 9; col++) {
-    applyMediumBorder(ws.getCell(r(3), col), ['top'])
-    applyMediumBorder(ws.getCell(r(22), col), ['bottom'])
-  }
-
-  // ── Recipient section (rows 10–13) ──────────────────────────────────────
-  ws.getRow(r(10)).height = 24
-  const lblCell = ws.getCell(r(10), 3)
-  lblCell.value = 'REMITIDO A: '
-  lblCell.font  = { name: 'Calibri', size: 14 }
-
-  const fechaLbl = ws.getCell(r(10), 7)
-  fechaLbl.value = 'FECHA: '
-  fechaLbl.font  = { name: 'Calibri', size: 14 }
-  fechaLbl.alignment = { horizontal: 'right' }
-
-  const fechaCell = ws.getCell(r(10), 8)
-  fechaCell.value  = data.fecha
-  fechaCell.numFmt = 'DD/MM/YYYY'
-  fechaCell.font   = { name: 'Calibri', size: 16, bold: true }
-  fechaCell.alignment = { horizontal: 'center' }
-
-  const clienteCell = ws.getCell(r(11), 3)
-  clienteCell.value = data.clienteNombre
-  clienteCell.font  = { name: 'Calibri', size: 14, bold: true }
-
-  // RFC cliente
-  ws.getRow(r(13)).height = 24
-  ws.getCell(r(13), 3).value = 'RFC :'
-  ws.getCell(r(13), 3).font  = { name: 'Calibri', size: 16 }
-  ws.getCell(r(13), 3).alignment = { horizontal: 'center' }
-
-  mergeAndSet(ws, r(13), 4, r(13), 5, data.rfcCliente || '', {
-    font: { name: 'Arial', size: 14, bold: true, italic: true },
-    alignment: { horizontal: 'left' },
-  })
-
-  mergeAndSet(ws, r(13), 6, r(13), 7, ' ORDEN DE COMPRA:', {
-    font: { name: 'Calibri', size: 14 },
-    alignment: { horizontal: 'right' },
-  })
-
-  ws.getCell(r(13), 8).value = data.ordenCompra || 'PENDIENTE'
-  ws.getCell(r(13), 8).font  = { name: 'Calibri', size: 14, bold: true }
-  ws.getCell(r(13), 8).alignment = { horizontal: 'center' }
-
-  // ── Table headers (row 16) ───────────────────────────────────────────────
-  ws.getRow(r(16)).height = 24.75
-
-  ws.mergeCells(r(16), 3, r(16), 4)
-  blackHeader(ws, r(16), 3)
-  ws.getCell(r(16), 3).value = 'PARTIDA'
-  applyMediumBorder(ws.getCell(r(16), 3), ['top', 'left'])
-
-  ws.mergeCells(r(16), 5, r(16), 6)
-  blackHeader(ws, r(16), 5)
-  ws.getCell(r(16), 5).value = 'DESCRIPCIÓN'
-  applyMediumBorder(ws.getCell(r(16), 5), ['top'])
-
-  blackHeader(ws, r(16), 7)
-  ws.getCell(r(16), 7).value = 'UNIDAD'
-  applyMediumBorder(ws.getCell(r(16), 7), ['top'])
-
-  blackHeader(ws, r(16), 8)
-  ws.getCell(r(16), 8).value = copyType
-  applyMediumBorder(ws.getCell(r(16), 8), ['top', 'right'])
-
-  // ── Data rows (starting at row 18) ──────────────────────────────────────
-  let dataRow = r(18)
-  data.items.forEach((item, idx) => {
-    ws.getRow(dataRow).height = 24.95
-
-    ws.mergeCells(dataRow, 3, dataRow, 4)
-    ws.getCell(dataRow, 3).value = item.partida
-    ws.getCell(dataRow, 3).font  = { name: 'Arial', size: 12 }
-    ws.getCell(dataRow, 3).alignment = { horizontal: 'center', vertical: 'middle' }
-    applyMediumBorder(ws.getCell(dataRow, 3), ['left'])
-
-    ws.mergeCells(dataRow, 5, dataRow, 6)
-    ws.getCell(dataRow, 5).value = item.descripcion
-    ws.getCell(dataRow, 5).font  = { name: 'Arial', size: 12 }
-    ws.getCell(dataRow, 5).alignment = { horizontal: 'center', vertical: 'middle' }
-
-    ws.getCell(dataRow, 7).value = item.unidad
-    ws.getCell(dataRow, 7).font  = { name: 'Arial', size: 12 }
-    ws.getCell(dataRow, 7).alignment = { horizontal: 'center', vertical: 'middle' }
-
-    const qty = copyType === 'ENTREGADO' ? item.cantidadEntregada : item.cantidadSolicitada
-    ws.getCell(dataRow, 8).value = qty
-    ws.getCell(dataRow, 8).font  = { name: 'Arial', size: 12 }
-    ws.getCell(dataRow, 8).alignment = { horizontal: 'center', vertical: 'middle' }
-    applyMediumBorder(ws.getCell(dataRow, 8), ['right'])
-
-    dataRow++
-  })
-
-  // ── OBS row ──────────────────────────────────────────────────────────────
-  if (data.observaciones) {
-    ws.getRow(dataRow).height = 24.95
-    ws.mergeCells(dataRow, 3, dataRow, 4)
-    ws.getCell(dataRow, 3).value = 'OBS:'
-    ws.getCell(dataRow, 3).font  = { name: 'Arial', size: 12 }
-    ws.getCell(dataRow, 3).alignment = { horizontal: 'center' }
-    applyMediumBorder(ws.getCell(dataRow, 3), ['left'])
-
-    ws.mergeCells(dataRow, 5, dataRow, 6)
-    ws.getCell(dataRow, 5).value = data.observaciones
-    ws.getCell(dataRow, 5).font  = { name: 'Arial', size: 10 }
-    ws.getCell(dataRow, 5).alignment = { horizontal: 'center', wrapText: true }
-
-    applyMediumBorder(ws.getCell(dataRow, 8), ['right'])
-    dataRow++
-  }
-
-  // ── Bottom border for table + outer box ─────────────────────────────────
-  for (let col = 3; col <= 8; col++) {
-    applyMediumBorder(ws.getCell(dataRow, col), ['bottom'])
-  }
-  for (let col = 2; col <= 9; col++) {
-    applyMediumBorder(ws.getCell(dataRow + 1, col), ['bottom'])
-  }
-
-  // ── Logo image ───────────────────────────────────────────────────────────
   if (fs.existsSync(LOGO_PATH)) {
-    const logoId = ws.workbook.addImage({ filename: LOGO_PATH, extension: 'jpeg' })
-    ws.addImage(logoId, {
-      tl: { col: 1.1, row: r(3) - 0.5 },
-      ext: { width: 170, height: 112 },
-    })
+    try { doc.image(LOGO_PATH, L + 4, y + 4, { height: 64 }) } catch {}
   }
+
+  doc.fontSize(14).font('Helvetica-Bold').fillColor('#000000')
+     .text(EMPRESA, L + 95, y + 10, { width: W - 200, lineBreak: false })
+  doc.fontSize(9).font('Helvetica')
+     .text(RFC_EMPRESA, L + 95, y + 32, { width: W - 200, lineBreak: false })
+  doc.fontSize(12).font('Helvetica-Bold').fillColor('#CC0000')
+     .text(`REMISION  ${data.remisionNumero}`, L + 95, y + 52, { width: W - 100, align: 'right', lineBreak: false })
+  doc.fillColor('#000000')
+  y += headerH + 2
+
+  // ── Copy type banner ─────────────────────────────────────────────────────
+  doc.rect(L, y, W, 16).fill('#1C1C1C').stroke('#000000')
+  doc.fontSize(8).font('Helvetica-Bold').fillColor('#FFFFFF')
+     .text(copyType, L, y + 4, { width: W, align: 'center', lineBreak: false })
+  doc.fillColor('#000000')
+  y += 18
+
+  // ── Client section ───────────────────────────────────────────────────────
+  doc.rect(L, y, W, 42).stroke()
+  doc.fontSize(7).font('Helvetica').fillColor('#666666')
+     .text('REMITIDO A:', L + 5, y + 5, { lineBreak: false })
+  doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000')
+     .text(data.clienteNombre, L + 5, y + 16, { width: W * 0.62, lineBreak: false })
+  doc.fontSize(7).font('Helvetica').fillColor('#666666')
+     .text('FECHA:', R - 110, y + 5, { lineBreak: false })
+  doc.fontSize(10).font('Helvetica-Bold').fillColor('#000000')
+     .text(data.fecha.toLocaleDateString('es-MX'), R - 110, y + 16, { width: 100, lineBreak: false })
+  y += 44
+
+  // ── RFC / Order row ──────────────────────────────────────────────────────
+  const rfcRowH = data.folioCandado ? 22 : 22
+  doc.rect(L, y, W, rfcRowH).stroke()
+
+  doc.fontSize(7).font('Helvetica').fillColor('#666666')
+     .text('RFC:', L + 5, y + 7, { lineBreak: false })
+  doc.font('Helvetica-Bold').fillColor('#000000')
+     .text(data.rfcCliente || '—', L + 25, y + 7, { width: W * 0.22, lineBreak: false })
+
+  doc.font('Helvetica').fillColor('#666666')
+     .text('ORD. COMPRA:', L + W * 0.38, y + 7, { lineBreak: false })
+  doc.font('Helvetica-Bold').fillColor('#000000')
+     .text(data.ordenCompra || 'PENDIENTE', L + W * 0.54, y + 7, { width: W * 0.2, lineBreak: false })
+
+  if (data.folioCandado) {
+    doc.font('Helvetica').fillColor('#666666')
+       .text('FOLIO CANDADO:', L + W * 0.72, y + 7, { lineBreak: false })
+    doc.font('Helvetica-Bold').fillColor('#000000')
+       .text(data.folioCandado, L + W * 0.9, y + 7, { width: W * 0.1, lineBreak: false })
+  }
+  y += rfcRowH + 2
+
+  // ── Table header ─────────────────────────────────────────────────────────
+  const c1 = L            // PARTIDA
+  const c2 = L + 52       // DESCRIPCIÓN
+  const c3 = L + W * 0.70 // UNIDAD
+  const c4 = L + W * 0.84 // CANTIDAD
+
+  doc.rect(L, y, W, 17).fill('#111111').stroke()
+  doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#FFFFFF')
+  doc.text('PARTIDA',   c1,      y + 5, { width: 52,          align: 'center', lineBreak: false })
+  doc.text('DESCRIPCIÓN', c2,    y + 5, { width: W * 0.70 - 52, align: 'center', lineBreak: false })
+  doc.text('UNIDAD',    c3,      y + 5, { width: W * 0.14,    align: 'center', lineBreak: false })
+  doc.text(copyType,    c4,      y + 5, { width: W * 0.16 - 2, align: 'center', lineBreak: false })
+  doc.fillColor('#000000')
+  y += 19
+
+  // ── Data rows ────────────────────────────────────────────────────────────
+  const rowH = 16
+  data.items.forEach((item) => {
+    doc.rect(L, y, W, rowH).stroke()
+    doc.moveTo(c2, y).lineTo(c2, y + rowH).stroke()
+    doc.moveTo(c3, y).lineTo(c3, y + rowH).stroke()
+    doc.moveTo(c4, y).lineTo(c4, y + rowH).stroke()
+
+    doc.fontSize(8).font('Helvetica').fillColor('#000000')
+    doc.text(String(item.partida), c1, y + 4,     { width: 52,            align: 'center', lineBreak: false })
+    doc.text(item.descripcion,     c2 + 4, y + 4, { width: W * 0.7 - 60,  lineBreak: false })
+    doc.text(item.unidad,          c3 + 3, y + 4, { width: W * 0.14 - 6,  align: 'center', lineBreak: false })
+    const qty = copyType === 'ENTREGADO' ? item.cantidadEntregada : item.cantidadSolicitada
+    doc.text(String(qty),          c4 + 3, y + 4, { width: W * 0.16 - 8,  align: 'center', lineBreak: false })
+    y += rowH
+  })
+
+  // ── Observaciones ────────────────────────────────────────────────────────
+  if (data.observaciones) {
+    doc.rect(L, y, W, 20).stroke()
+    doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#000000')
+       .text('OBS:', L + 5, y + 6, { lineBreak: false })
+    doc.font('Helvetica')
+       .text(data.observaciones, L + 32, y + 6, { width: W - 42, lineBreak: false })
+    y += 22
+  }
+
+  // ── Signature area ────────────────────────────────────────────────────────
+  doc.rect(L, y, W, 32).stroke()
+  doc.moveTo(L + W / 2, y).lineTo(L + W / 2, y + 32).stroke()
+  doc.fontSize(7).font('Helvetica').fillColor('#888888')
+     .text('Firma y sello de recibido:', L + 5, y + 5, { lineBreak: false })
+     .text('Nombre completo:', L + W / 2 + 5, y + 5, { lineBreak: false })
+  y += 34
+
+  return y
 }
 
-// ── Main export ──────────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────────
 
 export async function generarRemision(data: RemisionData): Promise<Buffer> {
-  const wb = new ExcelJS.Workbook()
-  const ws = wb.addWorksheet('Remisión', {
-    pageSetup: { orientation: 'portrait', printArea: 'B2:I48' },
-    views: [{ showGridLines: false }],
+  return new Promise((resolve, reject) => {
+    const doc = new (PDFDocument as any)({
+      margin: 0,
+      size: 'LETTER',
+      info: { Title: `Remisión ${data.remisionNumero}`, Author: EMPRESA },
+    })
+
+    const chunks: Buffer[] = []
+    doc.on('data',  (c: Buffer) => chunks.push(c))
+    doc.on('end',   () => resolve(Buffer.concat(chunks)))
+    doc.on('error', reject)
+
+    // Copy 1 — ENTREGADO
+    const y1 = drawCopy(doc, data, 'ENTREGADO', 20)
+
+    // Dashed cut line
+    const cutY = y1 + 8
+    doc.dash(4, { space: 4 })
+       .moveTo(40, cutY).lineTo(572, cutY).stroke('#999999')
+       .undash()
+
+    // Copy 2 — SOLICITADO
+    drawCopy(doc, data, 'SOLICITADO', cutY + 12)
+
+    doc.end()
   })
-
-  // Column widths (B=2 … I=9)
-  ws.getColumn(1).width = 11.43   // A
-  ws.getColumn(2).width = 4.30    // B
-  ws.getColumn(3).width = 11.43   // C
-  ws.getColumn(4).width = 10.36   // D
-  ws.getColumn(5).width = 18.02   // E
-  ws.getColumn(6).width = 30.40   // F
-  ws.getColumn(7).width = 23.68   // G
-  ws.getColumn(8).width = 27.57   // H
-  ws.getColumn(9).width = 3.63    // I
-
-  // Top copy: ENTREGADO
-  buildCopy(ws, 1, data, 'ENTREGADO')
-
-  // Cut line (row 25)
-  for (let col = 2; col <= 9; col++) {
-    ws.getCell(25, col).border = { bottom: { style: 'mediumDashed' } }
-  }
-
-  // Bottom copy: SOLICITADO (offset 25 rows)
-  buildCopy(ws, 26, data, 'SOLICITADO')
-
-  const buf = await wb.xlsx.writeBuffer()
-  return Buffer.from(buf)
 }
-
-// ── Save to disk ─────────────────────────────────────────────────────────────
 
 export async function guardarRemision(data: RemisionData, uploadDir: string): Promise<string> {
   const dir = path.join(uploadDir, 'remisiones')
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 
-  const filename = `remision_${data.remisionNumero.replace(/\s/g, '_')}_${Date.now()}.xlsx`
-  const filepath = path.join(dir, filename)
+  const filename = `remision_${data.remisionNumero.replace(/[\s/]/g, '_')}_${Date.now()}.pdf`
+  const filepath  = path.join(dir, filename)
 
   const buf = await generarRemision(data)
   fs.writeFileSync(filepath, buf)

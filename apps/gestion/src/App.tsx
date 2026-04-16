@@ -14,6 +14,7 @@ import { ConfigPage } from './pages/ConfigPage'
 import { NotificacionesPage } from './pages/NotificacionesPage'
 import { AppConductorPage } from './pages/AppConductorPage'
 import { InventarioPage } from './pages/InventarioPage'
+import { GastosPage } from './pages/GastosPage'
 import { ToastContainer } from './components/ui/ToastContainer'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="reportes" element={<ReportesPage />} />
           <Route path="app-conductor" element={<AppConductorPage />} />
           <Route path="notificaciones" element={<NotificacionesPage />} />
+          <Route path="gastos" element={<GastosPage />} />
           <Route path="config" element={<ConfigPage />} />
         </Route>
       </Routes>

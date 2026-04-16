@@ -7,6 +7,7 @@ import type { Notificacion } from '@logiflow/types'
 const NAV = [
   { to: '/inicio', icon: '🏠', label: 'Inicio' },
   { to: '/entregas', icon: '🚚', label: 'Entregas' },
+  { to: '/gastos', icon: '💸', label: 'Gastos' },
   { to: '/historial', icon: '📋', label: 'Historial' },
   { to: '/notificaciones', icon: '🔔', label: 'Alertas' },
   { to: '/perfil', icon: '👤', label: 'Perfil' },

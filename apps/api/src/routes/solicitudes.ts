@@ -42,6 +42,7 @@ const solicitudSchema = z.object({
   distanciaKm: z.number().optional().nullable(),
   tiempoRuta: z.string().optional().nullable(),
   itemsRemision: z.array(z.any()).optional().nullable(),
+  folioCandado: z.string().optional().nullable(),
 })
 
 // GET /api/solicitudes

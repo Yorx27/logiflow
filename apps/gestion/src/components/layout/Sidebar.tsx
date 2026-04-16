@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/calendario', icon: '📅', label: 'Calendario' },
   { to: '/facturacion', icon: '💰', label: 'Facturación' },
   { to: '/reportes', icon: '📈', label: 'Reportes' },
+  { to: '/gastos', icon: '💸', label: 'Gastos' },
   { to: '/app-conductor', icon: '📱', label: 'App Conductor' },
   { to: '/notificaciones', icon: '🔔', label: 'Notificaciones' },
   { to: '/config', icon: '⚙️', label: 'Configuración' },
