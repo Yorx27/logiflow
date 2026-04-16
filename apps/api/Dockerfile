@@ -21,9 +21,9 @@ COPY apps/api/ ./apps/api/
 WORKDIR /app/apps/api
 RUN pnpm run build
 
-# ── Stage 3: runner ───────────────────────────────────────────────────────────
-FROM node:20-bullseye-slim AS runner
-RUN apt-get update && apt-get install -y --no-install-recommends openssl libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/*
+# ── Stage 3: runner — Node 18 (OpenSSL 1.1.x) guarantees libssl.so.1.1 ──────
+FROM node:18-bullseye-slim AS runner
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@10
 WORKDIR /app
 
@@ -32,21 +32,13 @@ COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY apps/api/package.json ./apps/api/
 
-# Copy prisma schema BEFORE pnpm install so @prisma/engines postinstall
-# can detect binaryTargets and download the correct engine binary
-COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-
-ENV PRISMA_CLI_BINARY_TARGETS=debian-openssl-1.1.x
 RUN pnpm install --prod --frozen-lockfile
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/apps/api/src/assets ./apps/api/src/assets
 
 WORKDIR /app/apps/api
-
-# Re-generate Prisma client for this exact OS/OpenSSL combination
-RUN node_modules/.bin/prisma generate
-
 ENV NODE_ENV=production
 EXPOSE 3001
 CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/index.js"]
