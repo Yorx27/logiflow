@@ -39,6 +39,10 @@ COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/apps/api/src/assets ./apps/api/src/assets
 
 WORKDIR /app/apps/api
+
+# Generate Prisma client for the runner's installed @prisma/client version
+RUN node_modules/.bin/prisma generate
+
 ENV NODE_ENV=production
 EXPOSE 3001
 CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/index.js"]
