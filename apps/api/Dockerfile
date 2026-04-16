@@ -41,4 +41,4 @@ COPY --from=builder /app/apps/api/src/assets ./apps/api/src/assets
 WORKDIR /app/apps/api
 ENV NODE_ENV=production
 EXPOSE 3001
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "echo '=== SSL LIBS ===' && find /usr/lib -name 'libssl*' 2>/dev/null && echo '=== OPENSSL VER ===' && openssl version 2>&1 || true && echo '=== PRISMA ENGINE ===' && ls node_modules/.prisma/client/ 2>/dev/null || ls ../../node_modules/.prisma/client/ 2>/dev/null || true && echo '=== MIGRATE ===' && node_modules/.bin/prisma migrate deploy && node dist/index.js"]
