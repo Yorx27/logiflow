@@ -23,7 +23,7 @@ RUN pnpm run build
 
 # ── Stage 3: runner — Node 18 (OpenSSL 1.1.x) guarantees libssl.so.1.1 ──────
 FROM node:18-bullseye-slim AS runner
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates netcat-openbsd dnsutils && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@10
 WORKDIR /app
 
@@ -41,4 +41,4 @@ COPY --from=builder /app/apps/api/src/assets ./apps/api/src/assets
 WORKDIR /app/apps/api
 ENV NODE_ENV=production
 EXPOSE 3001
-CMD ["sh", "-c", "echo '=== NET TEST ===' && getent hosts postgres.railway.internal 2>&1 || echo 'DNS FAIL' && node_modules/.bin/prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "echo '=== HOSTS ===' && getent ahosts postgres.railway.internal 2>&1 && echo '=== NC TEST ===' && (nc -zv postgres.railway.internal 5432 2>&1 || echo 'nc failed') && echo '=== MIGRATE ===' && node_modules/.bin/prisma migrate deploy && node dist/index.js"]
