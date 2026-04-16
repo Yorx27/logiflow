@@ -99,7 +99,6 @@ export function LoginPage() {
           </button>
         </div>
 
-        <p className="text-center text-carbon-500 text-xs">Powered by RAGA · CDMX</p>
       </div>
     </div>
   )

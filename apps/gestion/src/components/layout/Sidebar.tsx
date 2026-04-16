@@ -72,9 +72,6 @@ export function Sidebar() {
           ))}
         </nav>
 
-        <div className="px-5 py-4 border-t border-carbon-700 text-xs text-carbon-500">
-          Powered by RAGA · CDMX
-        </div>
       </aside>
     </>
   )

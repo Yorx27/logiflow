@@ -84,9 +84,6 @@ export function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-carbon-500 text-xs mt-4">
-          Powered by RAGA · CDMX
-        </p>
       </div>
     </div>
   )
