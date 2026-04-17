@@ -19,5 +19,7 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     return res.status(409).json({ error: 'Ya existe un registro con ese valor único' })
   }
   console.error(err)
-  res.status(500).json({ error: 'Error interno del servidor' })
+  const prismaCode = (err as any).code
+  const prismaMsg = prismaCode ? `[${prismaCode}] ${err.message}` : err.message
+  res.status(500).json({ error: 'Error interno del servidor', detail: prismaMsg })
 }
