@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api'
 import { toast } from '../stores/uiStore'
 import { Modal } from '../components/ui/Modal'
 import { SolBadge } from '../components/ui/StatoBadge'
@@ -108,7 +112,7 @@ function DetalleModal({ entrega, onClose }: { entrega: Entrega; onClose: () => v
         {/* Remisión */}
         {(entrega as any).remisionUrl ? (
           <a
-            href={`http://localhost:3001/api/entregas/${entrega.id}/remision`}
+            href={`${API_BASE}/entregas/${entrega.id}/remision`}
             target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-3 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-4 transition-colors group">
             <span className="text-2xl">📋</span>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { useConductorStore } from '../stores/conductorStore'
+import { api } from '../lib/api'
 import type { Conductor } from '@logiflow/types'
 
 export function LoginPage() {
@@ -15,10 +16,7 @@ export function LoginPage() {
   const { data: conductores = [] } = useQuery<Conductor[]>({
     queryKey: ['conductores-login'],
     queryFn: async () => {
-      // For login page, fetch without auth
-      const r = await axios.get('/api/conductores', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('demo-token') || ''}` },
-      })
+      const r = await api.get('/conductores')
       return r.data.data
     },
     retry: false,
@@ -40,7 +38,7 @@ export function LoginPage() {
       }
       const email = emailMap[cond.nombre] || `${cond.nombre.toLowerCase().split(' ')[0]}@logiflow.com`
 
-      const res = await axios.post('/api/auth/login', { email, password: 'conductor123' })
+      const res = await api.post('/auth/login', { email, password: 'conductor123' })
       setSession(cond, res.data.data.accessToken)
       nav('/inicio', { replace: true })
     } catch {
