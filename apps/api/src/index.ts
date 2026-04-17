@@ -51,7 +51,7 @@ app.use('/api/notificaciones', notificacionesRouter)
 app.use('/api/inventario', inventarioRouter)
 app.use('/api/gastos', gastosRouter)
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date() }))
+app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date(), v: '2026-04-17' }))
 
 // ─── WebSockets ───────────────────────────────────────────────────────────────
 initSocket(server)
