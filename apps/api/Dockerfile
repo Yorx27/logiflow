@@ -1,6 +1,6 @@
 # ── Stage 1: deps ────────────────────────────────────────────────────────────
-FROM node:20-bullseye-slim AS deps
-RUN apt-get update && apt-get install -y --no-install-recommends openssl libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/*
+FROM node:20-bookworm-slim AS deps
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@10
 WORKDIR /app
 
@@ -22,7 +22,7 @@ WORKDIR /app/apps/api
 RUN pnpm run build
 
 # ── Stage 3: runner — Node 18 (OpenSSL 1.1.x) guarantees libssl.so.1.1 ──────
-FROM node:18-bullseye-slim AS runner
+FROM node:20-bookworm-slim AS runner
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@10
 WORKDIR /app
