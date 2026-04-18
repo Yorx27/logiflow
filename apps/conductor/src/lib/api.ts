@@ -17,8 +17,11 @@ api.interceptors.response.use(
   (r) => r,
   (error) => {
     if (error.response?.status === 401) {
-      useConductorStore.getState().logout()
-      window.location.href = '/login'
+      // Evitar loop infinito: solo redirigir si NO estamos ya en /login
+      if (!window.location.pathname.includes('/login')) {
+        useConductorStore.getState().logout()
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   },

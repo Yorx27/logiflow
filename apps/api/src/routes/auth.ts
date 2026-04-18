@@ -51,6 +51,45 @@ authRouter.post('/refresh', async (req, res, next) => {
   }
 })
 
+// ── Endpoint público: lista conductores activos para la pantalla de login ──
+authRouter.get('/conductores-activos', async (_req, res, next) => {
+  try {
+    const data = await prisma.conductor.findMany({
+      where: { estado: { not: 'INACTIVO' } },
+      select: { id: true, nombre: true, licencia: true, estado: true },
+      orderBy: { nombre: 'asc' },
+    })
+    res.json({ data })
+  } catch (e) { next(e) }
+})
+
+// ── Login por conductorId + password (sin necesidad de conocer el email) ──
+authRouter.post('/login-conductor', async (req, res, next) => {
+  try {
+    const { conductorId, password } = req.body
+    if (!conductorId || !password) throw new AppError('Datos incompletos', 400)
+
+    const conductor = await prisma.conductor.findFirst({
+      where: { id: conductorId },
+      include: { usuario: true },
+    })
+    if (!conductor?.usuario || !conductor.usuario.activo)
+      throw new AppError('Conductor sin cuenta activa', 401)
+
+    const valid = await bcrypt.compare(password, conductor.usuario.password)
+    if (!valid) throw new AppError('PIN incorrecto', 401)
+
+    const payload = {
+      userId: conductor.usuario.id,
+      rol: conductor.usuario.rol,
+      conductorId: conductor.id,
+    }
+    const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '12h' })
+    const { password: _, ...usuarioSafe } = conductor.usuario
+    res.json({ data: { accessToken, conductor: { ...conductor, usuario: usuarioSafe } } })
+  } catch (e) { next(e) }
+})
+
 authRouter.get('/me', authenticate, async (req, res, next) => {
   try {
     const user = await prisma.usuario.findUnique({

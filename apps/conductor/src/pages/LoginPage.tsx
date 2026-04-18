@@ -3,46 +3,53 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { useConductorStore } from '../stores/conductorStore'
-import { api } from '../lib/api'
-import type { Conductor } from '@logiflow/types'
+
+// URL base sin autenticación (para endpoints públicos)
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api'
+
+interface ConductorPublico {
+  id: string
+  nombre: string
+  licencia: string
+  estado: string
+}
 
 export function LoginPage() {
   const nav = useNavigate()
   const { setSession } = useConductorStore()
   const [selectedId, setSelectedId] = useState('')
+  const [pin, setPin] = useState('conductor123')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const { data: conductores = [] } = useQuery<Conductor[]>({
-    queryKey: ['conductores-login'],
+  // Usa endpoint PÚBLICO — sin token, sin 401
+  const { data: conductores = [], isError } = useQuery<ConductorPublico[]>({
+    queryKey: ['conductores-login-publico'],
     queryFn: async () => {
-      const r = await api.get('/conductores')
+      const r = await axios.get(`${API_BASE}/auth/conductores-activos`)
       return r.data.data
     },
-    retry: false,
+    retry: 2,
+    staleTime: 60_000,
   })
 
   async function handleLogin() {
     if (!selectedId) { setError('Selecciona un conductor'); return }
     setError(''); setLoading(true)
     try {
-      // Login with conductor email (MVP: no PIN)
-      const cond = conductores.find((c) => c.id === selectedId)
-      if (!cond) { setError('Conductor no encontrado'); return }
-
-      // Map conductor to email
-      const emailMap: Record<string, string> = {
-        'Carlos Mendoza': 'carlos@logiflow.com',
-        'María González': 'maria@logiflow.com',
-        'Roberto Sánchez': 'roberto@logiflow.com',
-      }
-      const email = emailMap[cond.nombre] || `${cond.nombre.toLowerCase().split(' ')[0]}@logiflow.com`
-
-      const res = await api.post('/auth/login', { email, password: 'conductor123' })
-      setSession(cond, res.data.data.accessToken)
+      // Usa el nuevo endpoint que recibe conductorId + password
+      const res = await axios.post(`${API_BASE}/auth/login-conductor`, {
+        conductorId: selectedId,
+        password: pin,
+      })
+      const { accessToken, conductor } = res.data.data
+      setSession(conductor, accessToken)
       nav('/inicio', { replace: true })
-    } catch {
-      setError('Error al iniciar sesión')
+    } catch (e: any) {
+      const msg = e.response?.data?.error || 'Error al iniciar sesión'
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -63,8 +70,14 @@ export function LoginPage() {
         <div className="card space-y-4">
           <h2 className="font-display font-semibold text-lg">Selecciona tu perfil</h2>
 
+          {isError && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3">
+              No se pudo cargar la lista. Verifica tu conexión.
+            </div>
+          )}
+
           <div className="space-y-2">
-            {conductores.filter(c => c.estado !== 'INACTIVO').map((c) => (
+            {conductores.map((c) => (
               <button
                 key={c.id}
                 onClick={() => setSelectedId(c.id)}
@@ -84,7 +97,24 @@ export function LoginPage() {
                 {selectedId === c.id && <span className="ml-auto text-amber-400">✓</span>}
               </button>
             ))}
+            {conductores.length === 0 && !isError && (
+              <p className="text-carbon-500 text-sm text-center py-4">Cargando conductores...</p>
+            )}
           </div>
+
+          {selectedId && (
+            <div className="space-y-1">
+              <label className="text-xs text-carbon-400">Contraseña</label>
+              <input
+                type="password"
+                value={pin}
+                onChange={e => setPin(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                placeholder="••••••••"
+                className="input"
+              />
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3">
