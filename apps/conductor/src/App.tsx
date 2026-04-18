@@ -10,6 +10,7 @@ import { NotificacionesPage } from './pages/NotificacionesPage'
 import { PerfilPage } from './pages/PerfilPage'
 import { GastosPage } from './pages/GastosPage'
 import { ToastContainer } from './components/ToastContainer'
+import { PwaUpdatePrompt } from './components/PwaUpdatePrompt'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { conductor } = useConductorStore()
@@ -37,6 +38,7 @@ export default function App() {
         </Route>
       </Routes>
       <ToastContainer />
+      <PwaUpdatePrompt />
     </>
   )
 }
