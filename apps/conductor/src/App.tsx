@@ -11,6 +11,7 @@ import { PerfilPage } from './pages/PerfilPage'
 import { GastosPage } from './pages/GastosPage'
 import { ToastContainer } from './components/ToastContainer'
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt'
+import { MaintenancePage } from './pages/MaintenancePage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { conductor } = useConductorStore()
@@ -19,6 +20,10 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  if (import.meta.env.VITE_MAINTENANCE_MODE === 'true') {
+    return <MaintenancePage />
+  }
+
   return (
     <>
       <Routes>

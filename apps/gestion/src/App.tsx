@@ -16,6 +16,7 @@ import { AppConductorPage } from './pages/AppConductorPage'
 import { InventarioPage } from './pages/InventarioPage'
 import { GastosPage } from './pages/GastosPage'
 import { ToastContainer } from './components/ui/ToastContainer'
+import { MaintenancePage } from './pages/MaintenancePage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore()
@@ -24,6 +25,10 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  if (import.meta.env.VITE_MAINTENANCE_MODE === 'true') {
+    return <MaintenancePage />
+  }
+
   return (
     <>
       <Routes>
