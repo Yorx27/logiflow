@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LogiFlow — Mantenimiento</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d0f14;
+    color: white;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+  }
+  .logo {
+    width: 72px; height: 72px;
+    background: #f59e0b;
+    border-radius: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; font-weight: 900;
+    color: #0d0f14;
+    margin-bottom: 20px;
+    box-shadow: 0 0 40px rgba(245,158,11,0.35);
+  }
+  h1 { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+  .sub { color: #f59e0b; font-size: 14px; font-weight: 600; margin-bottom: 32px; }
+  .card {
+    background: #1a1d24;
+    border: 1px solid #2a2d36;
+    border-radius: 20px;
+    padding: 32px 28px;
+    max-width: 340px;
+    width: 100%;
+  }
+  .icon { font-size: 48px; margin-bottom: 16px; }
+  h2 { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+  p { color: #6b7280; font-size: 14px; line-height: 1.6; }
+  .dot-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; margin-top: 24px;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    background: #f59e0b;
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .dot:nth-child(2) { animation-delay: 0.3s; }
+  .dot:nth-child(3) { animation-delay: 0.6s; }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1); }
+  }
+  .hint { color: #374151; font-size: 12px; margin-top: 32px; }
+</style>
+</head>
+<body>
+  <div class="logo">L</div>
+  <h1>LogiFlow</h1>
+  <p class="sub">Portal del Conductor</p>
+
+  <div class="card">
+    <div class="icon">🔧</div>
+    <h2>En mantenimiento</h2>
+    <p>El portal está temporalmente fuera de servicio. Regresaremos en breve con mejoras.</p>
+    <div class="dot-row">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+  </div>
+
+  <p class="hint">¿Urgente? Contacta a tu coordinador de operaciones.</p>
+
+  <script>
+    // Desregistrar el service worker para que la próxima visita cargue fresco
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister())
+      })
+    }
+  </script>
+</body>
+</html>
